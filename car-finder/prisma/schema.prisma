@@ -1,0 +1,85 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+model Dealer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  website   String?
+  address   String?
+  lat       Float?
+  lon       Float?
+  createdAt DateTime @default(now())
+  listings  Listing[]
+}
+
+model Listing {
+  id            String   @id @default(uuid())
+  vin           String?
+  source        String
+  sourceId      String?
+  title         String?
+  year          Int?
+  make          String?
+  model         String?
+  trim          String?
+  price         Int?
+  mileage       Int?
+  body          String?
+  drivetrain    String?
+  transmission  String?
+  fuel          String?
+  colorExt      String?
+  colorInt      String?
+  sellerType    SellerType?
+  dealerId      String?
+  dealer        Dealer?  @relation(fields: [dealerId], references: [id])
+  city          String?
+  state         String?
+  lat           Float?
+  lon           Float?
+  url           String?
+  phone         String?
+  images        String[]
+  postedAt      DateTime?
+  updatedAt     DateTime @default(now())
+  hashSignature String
+  priceHistory  PriceHistory[]
+
+  @@unique([source, sourceId])
+  @@index([make, model, year])
+  @@index([price])
+  @@index([hashSignature])
+}
+
+model PriceHistory {
+  id         String   @id @default(uuid())
+  listing    Listing  @relation(fields: [listingId], references: [id])
+  listingId  String
+  price      Int
+  capturedAt DateTime @default(now())
+}
+
+model User {
+  id       String        @id @default(uuid())
+  email    String        @unique
+  name     String?
+  searches SavedSearch[]
+}
+
+model SavedSearch {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  queryJson      Json
+  zip            String?
+  radiusMiles    Int      @default(50)
+  notify         Notify   @default(daily)
+  lastNotifiedAt DateTime?
+}
+
+enum SellerType { dealer private }
+
+enum Notify { daily weekly off }
