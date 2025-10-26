@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Notify, PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 const prisma = new PrismaClient();
 
@@ -20,6 +20,31 @@ async function main() {
   }
 
   console.log('Seeded listings:', cars.length);
+
+  if (process.env.NODE_ENV !== 'production') {
+    const demoFilters = { make: 'Toyota', model: 'Camry', minYear: 2015, maxPrice: 25000, maxMiles: 120000 };
+    const demoUser = await prisma.user.upsert({
+      where: { email: 'designer@example.com' },
+      update: { name: 'Demo User' },
+      create: { id: 'demo-user', email: 'designer@example.com', name: 'Demo User' }
+    });
+
+    const existingSearch = await prisma.savedSearch.findFirst({
+      where: { userId: demoUser.id, queryJson: { equals: demoFilters } }
+    });
+
+    if (!existingSearch) {
+      await prisma.savedSearch.create({
+        data: {
+          userId: demoUser.id,
+          queryJson: demoFilters,
+          radiusMiles: 75,
+          notify: Notify.daily,
+        },
+      });
+      console.log('Seeded saved search for demo user');
+    }
+  }
 }
 
 main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
