@@ -2,7 +2,18 @@
 import { useEffect, useMemo, useState } from 'react';
 
 type Listing = {
-  id: string; year?: number; make?: string; model?: string; price?: number; mileage?: number; city?: string; state?: string; images?: string[]; url?: string; title?: string;
+  id: string;
+  year?: number;
+  make?: string;
+  model?: string;
+  price?: number;
+  mileage?: number;
+  city?: string;
+  state?: string;
+  images?: string[];
+  url?: string;
+  title?: string;
+  priceHistory?: { price: number; capturedAt: string }[];
 };
 
 export default function Home() {
@@ -39,6 +50,19 @@ export default function Home() {
             <h3 className="font-semibold mt-2">{l.year} {l.make} {l.model}</h3>
             <p className="text-sm opacity-80">{l.city}{l.state ? `, ${l.state}` : ''}</p>
             <p className="font-bold">{typeof l.price === 'number' ? `$${l.price.toLocaleString()}` : ''}</p>
+            {l.priceHistory?.length ? (
+              <details className="mt-2 text-sm">
+                <summary className="cursor-pointer text-blue-600">Price history</summary>
+                <ul className="mt-2 space-y-1">
+                  {l.priceHistory.map((ph, idx) => (
+                    <li key={`${ph.capturedAt}-${idx}`} className="flex justify-between text-xs text-gray-700">
+                      <span>{new Date(ph.capturedAt).toLocaleDateString()}</span>
+                      <span>${ph.price.toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
             <a href={l.url ?? '#'} target="_blank" className="text-blue-600 underline">View</a>
           </li>
         ))}

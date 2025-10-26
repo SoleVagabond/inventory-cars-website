@@ -19,7 +19,24 @@ export async function GET(req: NextRequest) {
     },
     orderBy: [{ updatedAt: 'desc' }],
     take: 60,
-    select: { id: true, year: true, make: true, model: true, price: true, mileage: true, city: true, state: true, images: true, url: true, title: true }
+    select: {
+      id: true,
+      year: true,
+      make: true,
+      model: true,
+      price: true,
+      mileage: true,
+      city: true,
+      state: true,
+      images: true,
+      url: true,
+      title: true,
+      priceHistory: {
+        orderBy: { capturedAt: 'desc' },
+        take: 5,
+        select: { price: true, capturedAt: true }
+      }
+    }
   });
 
   return NextResponse.json(listings);
