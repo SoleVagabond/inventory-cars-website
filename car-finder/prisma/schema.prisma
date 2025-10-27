@@ -18,6 +18,7 @@ model Dealer {
   lon       Float?
   createdAt DateTime  @default(now())
   listings  Listing[]
+  members   DealerMembership[]
 }
 
 model Listing {
@@ -56,6 +57,9 @@ model Listing {
   @@unique([source, sourceId])
   @@index([make, model, year])
   @@index([price])
+  @@index([mileage])
+  @@index([year])
+  @@index([updatedAt, id])
   @@index([hashSignature])
 }
 
@@ -68,14 +72,12 @@ model PriceHistory {
 }
 
 model User {
-  id            String        @id @default(uuid())
-  email         String?       @unique
-  name          String?
-  image         String?
-  emailVerified DateTime?
-  searches      SavedSearch[]
-  accounts      Account[]
-  sessions      Session[]
+  id       String        @id @default(uuid())
+  email    String        @unique
+  name     String?
+  role     UserRole      @default(dealer)
+  searches SavedSearch[]
+  memberships DealerMembership[]
 }
 
 model SavedSearch {
@@ -89,38 +91,16 @@ model SavedSearch {
   lastNotifiedAt DateTime?
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+model DealerMembership {
+  id        String                @id @default(uuid())
+  dealer    Dealer                @relation(fields: [dealerId], references: [id])
+  dealerId  String
+  user      User                  @relation(fields: [userId], references: [id])
+  userId    String
+  role      DealerMembershipRole  @default(member)
+  createdAt DateTime              @default(now())
 
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String
-  expires      DateTime
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
+  @@unique([dealerId, userId])
 }
 
 enum SellerType {
@@ -132,4 +112,15 @@ enum Notify {
   daily
   weekly
   off
+}
+
+enum UserRole {
+  staff
+  dealer
+}
+
+enum DealerMembershipRole {
+  owner
+  member
+  viewer
 }
