@@ -57,6 +57,9 @@ model Listing {
   @@unique([source, sourceId])
   @@index([make, model, year])
   @@index([price])
+  @@index([mileage])
+  @@index([year])
+  @@index([updatedAt, id])
   @@index([hashSignature])
 }
 
