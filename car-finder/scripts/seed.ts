@@ -1,4 +1,4 @@
-import { Notify, PrismaClient } from '@prisma/client';
+import { Notify, PrismaClient, UserRole } from '@prisma/client';
 import crypto from 'crypto';
 const prisma = new PrismaClient();
 
@@ -25,8 +25,8 @@ async function main() {
     const demoFilters = { make: 'Toyota', model: 'Camry', minYear: 2015, maxPrice: 25000, maxMiles: 120000 };
     const demoUser = await prisma.user.upsert({
       where: { email: 'designer@example.com' },
-      update: { name: 'Demo User' },
-      create: { id: 'demo-user', email: 'designer@example.com', name: 'Demo User' }
+      update: { name: 'Demo User', role: UserRole.staff },
+      create: { id: 'demo-user', email: 'designer@example.com', name: 'Demo User', role: UserRole.staff }
     });
 
     const existingSearch = await prisma.savedSearch.findFirst({
