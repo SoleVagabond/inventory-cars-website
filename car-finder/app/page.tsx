@@ -183,7 +183,12 @@ export default function Home() {
       const response = await fetch('/api/saved-searches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filters }),
+        body: JSON.stringify({
+          filters,
+          zip: saveOptions.zip ? saveOptions.zip : undefined,
+          radiusMiles: saveOptions.radiusMiles,
+          notify: saveOptions.notify,
+        }),
       });
 
       const payload = await response.json().catch(() => null);
@@ -209,9 +214,21 @@ export default function Home() {
         return [saved, ...prev];
       });
 
+      setSaveOptions({
+        zip: saved.zip ?? '',
+        radiusMiles: saved.radiusMiles,
+        notify: saved.notify,
+      });
+
       setSavedError(null);
       setAuthState('authenticated');
-      setFeedback('Search saved!');
+      const message =
+        saved.notify === 'off'
+          ? 'Search saved. Alerts are off.'
+          : saved.notify === 'daily'
+            ? 'Search saved. Daily alerts active.'
+            : 'Search saved. Weekly alerts active.';
+      setFeedback(message);
       if (feedbackTimeout.current) {
         clearTimeout(feedbackTimeout.current);
       }
@@ -221,10 +238,15 @@ export default function Home() {
     } finally {
       setIsSaving(false);
     }
-  }, [filters]);
+  }, [filters, saveOptions]);
 
   const handleSelectSavedSearch = useCallback((item: SavedSearchItem) => {
     setFilters({ ...item.filters });
+    setSaveOptions({
+      zip: item.zip ?? '',
+      radiusMiles: item.radiusMiles,
+      notify: item.notify,
+    });
   }, [setFilters]);
 
   const handleDeleteSavedSearch = useCallback(async (item: SavedSearchItem) => {
@@ -336,6 +358,8 @@ export default function Home() {
           onSave={canSave ? handleSaveSearch : undefined}
           isSaving={isSaving}
           canSave={canSave}
+          notifyValue={saveOptions.notify}
+          onNotifyChange={handleNotifyChange}
         />
         {feedback ? <p className="text-sm text-green-600">{feedback}</p> : null}
         {savedError && canSave ? <p className="text-sm text-red-600">{savedError}</p> : null}

@@ -21,8 +21,8 @@ export const defaultSearchFilters: SearchFilters = {
 export const saveSearchPayloadSchema = z.object({
   filters: searchFiltersSchema,
   zip: z.string().trim().min(3).max(10).optional(),
-  radiusMiles: z.number().int().min(1).max(1000).optional(),
-  notify: z.enum(['daily', 'weekly', 'off']).optional(),
+  radiusMiles: z.number().int().min(1).max(1000).optional().default(50),
+  notify: z.enum(['daily', 'weekly', 'off']).optional().default('daily'),
 });
 
 export type SaveSearchPayload = z.infer<typeof saveSearchPayloadSchema>;

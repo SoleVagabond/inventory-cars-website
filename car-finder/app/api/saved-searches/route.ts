@@ -49,12 +49,13 @@ export async function POST(request: Request) {
   }
 
   const { filters, zip, radiusMiles = 50, notify = Notify.daily } = parseResult.data;
+  const normalizedZip = zip?.trim();
 
   const created = await prisma.savedSearch.create({
     data: {
       userId: user.id,
       queryJson: filters,
-      zip,
+      zip: normalizedZip ? normalizedZip : null,
       radiusMiles,
       notify,
     },

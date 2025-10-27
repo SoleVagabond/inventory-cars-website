@@ -29,6 +29,12 @@ function formatFilters(filters: SearchFilters) {
 }
 
 export function SavedSearchList({ items, loading = false, error, onSelect, onDelete }: SavedSearchListProps) {
+  const notifyLabel: Record<SavedSearchItem['notify'], string> = {
+    daily: 'Alerts: Daily',
+    weekly: 'Alerts: Weekly',
+    off: 'Alerts off',
+  };
+
   return (
     <aside className="space-y-4">
       <div>
@@ -48,8 +54,11 @@ export function SavedSearchList({ items, loading = false, error, onSelect, onDel
             <li key={item.id} className="border rounded-md p-3 space-y-2">
               <div className="text-sm font-medium">{formatFilters(item.filters)}</div>
               <div className="text-xs text-slate-500">
-                {item.zip ? `Zip ${item.zip} • ` : ''}{item.radiusMiles} mi radius • {item.notify}
+                {item.zip ? `Zip ${item.zip} • ` : ''}{item.radiusMiles} mi radius • {notifyLabel[item.notify]}
               </div>
+              {item.notify !== 'off' ? (
+                <div className="text-xs text-green-600">Alerts active</div>
+              ) : null}
               <div className="flex gap-2">
                 <button
                   type="button"
