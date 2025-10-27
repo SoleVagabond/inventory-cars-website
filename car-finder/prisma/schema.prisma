@@ -1,9 +1,14 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+  provider = "prisma-client-js"
+}
 
-datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
 model Dealer {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
   phone     String?
   email     String?
@@ -11,12 +16,13 @@ model Dealer {
   address   String?
   lat       Float?
   lon       Float?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   listings  Listing[]
+  members   DealerMembership[]
 }
 
 model Listing {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   vin           String?
   source        String
   sourceId      String?
@@ -35,7 +41,7 @@ model Listing {
   colorInt      String?
   sellerType    SellerType?
   dealerId      String?
-  dealer        Dealer?  @relation(fields: [dealerId], references: [id])
+  dealer        Dealer?        @relation(fields: [dealerId], references: [id])
   city          String?
   state         String?
   lat           Float?
@@ -44,13 +50,16 @@ model Listing {
   phone         String?
   images        String[]
   postedAt      DateTime?
-  updatedAt     DateTime @default(now())
+  updatedAt     DateTime       @default(now())
   hashSignature String
   priceHistory  PriceHistory[]
 
   @@unique([source, sourceId])
   @@index([make, model, year])
   @@index([price])
+  @@index([mileage])
+  @@index([year])
+  @@index([updatedAt, id])
   @@index([hashSignature])
 }
 
@@ -66,20 +75,52 @@ model User {
   id       String        @id @default(uuid())
   email    String        @unique
   name     String?
+  role     UserRole      @default(dealer)
   searches SavedSearch[]
+  memberships DealerMembership[]
 }
 
 model SavedSearch {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id])
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
   userId         String
   queryJson      Json
   zip            String?
-  radiusMiles    Int      @default(50)
-  notify         Notify   @default(daily)
+  radiusMiles    Int       @default(50)
+  notify         Notify    @default(daily)
   lastNotifiedAt DateTime?
 }
 
-enum SellerType { dealer private }
+model DealerMembership {
+  id        String                @id @default(uuid())
+  dealer    Dealer                @relation(fields: [dealerId], references: [id])
+  dealerId  String
+  user      User                  @relation(fields: [userId], references: [id])
+  userId    String
+  role      DealerMembershipRole  @default(member)
+  createdAt DateTime              @default(now())
 
-enum Notify { daily weekly off }
+  @@unique([dealerId, userId])
+}
+
+enum SellerType {
+  dealer
+  private
+}
+
+enum Notify {
+  daily
+  weekly
+  off
+}
+
+enum UserRole {
+  staff
+  dealer
+}
+
+enum DealerMembershipRole {
+  owner
+  member
+  viewer
+}
