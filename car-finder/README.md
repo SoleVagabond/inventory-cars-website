@@ -20,7 +20,7 @@ Open http://localhost:3000
 
 See `.env.example`. Minimum:
 ```
-DATABASE_URL=postgresql://user:pass@host:5432/db
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
