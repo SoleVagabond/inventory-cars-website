@@ -1,46 +1,44 @@
 import { prisma } from '@/lib/db';
+import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import type { User } from '@prisma/client';
-import { getServerSession as nextGetServerSession, type NextAuthOptions, type Session } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import { getServerSession as nextGetServerSession, type NextAuthOptions } from 'next-auth';
+import EmailProvider from 'next-auth/providers/email';
+import GoogleProvider from 'next-auth/providers/google';
 
-const demoUser = {
-  id: 'demo-user',
-  email: 'designer@example.com',
-  name: 'Demo User',
-};
+function requiredEnv(key: string) {
+  const value = process.env[key];
+  if (!value) {
+    const message = `${key} must be set to use NextAuth providers.`;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(message);
+    }
+    console.warn(message);
+    return `missing-${key}`;
+  }
+  return value;
+}
 
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
-    CredentialsProvider({
-      name: 'Demo',
-      credentials: {
-        email: { label: 'Email', type: 'text', placeholder: demoUser.email },
-      },
-      async authorize(credentials) {
-        const email = credentials?.email?.trim();
-        if (!email) {
-          return null;
-        }
-        return {
-          id: email,
-          email,
-          name: email,
-        };
-      },
+    EmailProvider({
+      server: requiredEnv('EMAIL_SERVER'),
+      from: requiredEnv('EMAIL_FROM'),
+      maxAge: 24 * 60 * 60,
+    }),
+    GoogleProvider({
+      clientId: requiredEnv('GOOGLE_CLIENT_ID'),
+      clientSecret: requiredEnv('GOOGLE_CLIENT_SECRET'),
     }),
   ],
-  session: { strategy: 'jwt' },
-  secret: process.env.NEXTAUTH_SECRET ?? 'development-secret',
+  secret: requiredEnv('NEXTAUTH_SECRET'),
+  session: { strategy: 'database' },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user && typeof (user as { id?: string }).id === 'string') {
-        token.sub = (user as { id: string }).id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
+    async session({ session, user }) {
       if (session.user) {
-        session.user.id = token.sub ?? session.user.id ?? undefined;
+        session.user.id = user.id;
+        session.user.role = user.role ?? null;
+        session.user.dealerId = user.dealerId ?? null;
       }
       return session;
     },
@@ -51,41 +49,17 @@ export async function getServerSession() {
   return nextGetServerSession(authOptions);
 }
 
-async function getSessionOrDemo(): Promise<Session | null> {
-  const session = await getServerSession();
-  if (session) {
-    return session;
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    return { user: demoUser } as Session;
-  }
-
-  return null;
-}
-
 export async function getAuthenticatedUser(): Promise<User | null> {
-  const session = await getSessionOrDemo();
+  const session = await getServerSession();
   const email = session?.user?.email;
 
-  if (!session || !email) {
+  if (!email) {
     return null;
   }
 
-  const name = session.user?.name ?? undefined;
-  const requestedId = session.user?.id;
-
-  const user = await prisma.user.upsert({
+  return prisma.user.findUnique({
     where: { email },
-    update: { name },
-    create: {
-      email,
-      name,
-      ...(requestedId ? { id: requestedId } : {}),
-    },
   });
-
-  return user;
 }
 
 export type AuthenticatedUser = Awaited<ReturnType<typeof getAuthenticatedUser>>;

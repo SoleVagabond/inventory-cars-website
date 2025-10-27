@@ -1,9 +1,14 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+  provider = "prisma-client-js"
+}
 
-datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
 model Dealer {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
   phone     String?
   email     String?
@@ -11,12 +16,13 @@ model Dealer {
   address   String?
   lat       Float?
   lon       Float?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   listings  Listing[]
+  users     User[]
 }
 
 model Listing {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   vin           String?
   source        String
   sourceId      String?
@@ -35,7 +41,7 @@ model Listing {
   colorInt      String?
   sellerType    SellerType?
   dealerId      String?
-  dealer        Dealer?  @relation(fields: [dealerId], references: [id])
+  dealer        Dealer?        @relation(fields: [dealerId], references: [id])
   city          String?
   state         String?
   lat           Float?
@@ -44,7 +50,7 @@ model Listing {
   phone         String?
   images        String[]
   postedAt      DateTime?
-  updatedAt     DateTime @default(now())
+  updatedAt     DateTime       @default(now())
   hashSignature String
   priceHistory  PriceHistory[]
 
@@ -66,20 +72,69 @@ model User {
   id       String        @id @default(uuid())
   email    String        @unique
   name     String?
+  role     String?
+  dealerId String?
+  dealer   Dealer?       @relation(fields: [dealerId], references: [id])
+  accounts Account[]
+  sessions Session[]
   searches SavedSearch[]
 }
 
 model SavedSearch {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id])
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
   userId         String
   queryJson      Json
   zip            String?
-  radiusMiles    Int      @default(50)
-  notify         Notify   @default(daily)
+  radiusMiles    Int       @default(50)
+  notify         Notify    @default(daily)
   lastNotifiedAt DateTime?
 }
 
-enum SellerType { dealer private }
+enum SellerType {
+  dealer
+  private
+}
 
-enum Notify { daily weekly off }
+enum Notify {
+  daily
+  weekly
+  off
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @map("refresh_token")
+  access_token       String? @map("access_token")
+  expires_at         Int?    @map("expires_at")
+  token_type         String? @map("token_type")
+  scope              String?
+  id_token           String? @map("id_token")
+  session_state      String?
+  oauth_token_secret String? @map("oauth_token_secret")
+  oauth_token        String? @map("oauth_token")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
