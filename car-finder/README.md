@@ -31,6 +31,47 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - Seed script with mock listings so UI isn’t empty.
 - Clean data model with future‑proof tables (PriceHistory, SavedSearch).
 
+## `/api/search` contract
+
+Third‑party clients can call `/api/search` with the following query parameters:
+
+| Parameter | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `make` | string | `''` | Case‑insensitive partial match. |
+| `model` | string | `''` | Case‑insensitive partial match. |
+| `minYear` | number | none | Filters results with `year >= minYear`. |
+| `maxPrice` | number | none | Filters results with `price <= maxPrice`. |
+| `maxMiles` | number | none | Filters results with `mileage <= maxMiles`. |
+| `page` | number | `1` | 1‑indexed, capped at 1000. |
+| `pageSize` | number | `20` | Page size is clamped to the range 1‑60. |
+| `sort` | enum | `updatedAt_desc` | One of `updatedAt_desc`, `price_asc`, `price_desc`, `mileage_asc`, `year_desc`. |
+
+Response payload:
+
+```jsonc
+{
+  "data": [/* listings matching the requested filters */],
+  "meta": {
+    "totalCount": 1204,
+    "page": 2,
+    "pageSize": 40,
+    "sort": "updatedAt_desc",
+    "hasNextPage": true,
+    "nextCursor": {
+      "page": 3,
+      "pageSize": 40,
+      "sort": "updatedAt_desc"
+    }
+  }
+}
+```
+
+Clients can use `meta.totalCount` and `meta.nextCursor` to render pagination controls or build infinite scroll experiences. All parameters are sanitized on the server with strict caps to protect the database.
+
+### Performance considerations
+
+The Prisma schema includes indexes on `price`, `mileage`, `year`, and `updatedAt` to support the available sort orders. For heavier traffic, consider materialized views or read replicas tailored to the most common filter combinations.
+
 ## Roadmap (move to issues)
 - [ ] Saved searches + email alerts (Resend/SMTP)
 - [ ] Price history cron & deal score
