@@ -2,6 +2,9 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { getServerSession } from '@/lib/auth';
 
+import { AuthControls } from '@/components/auth-controls';
+import { getAuthSession } from '@/lib/auth';
+
 export const metadata: Metadata = {
   title: 'Car Finder',
   description: 'Find your next car fast',
@@ -15,7 +18,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body>
         <div className="mx-auto max-w-6xl p-4">
-          <header className="flex items-center justify-between py-3">
+          <header className="flex items-center justify-between gap-3 py-3">
             <h1 className="text-xl font-bold">Car Finder</h1>
             <nav className="flex items-center gap-3 text-sm text-slate-600">
               {session?.user ? (
