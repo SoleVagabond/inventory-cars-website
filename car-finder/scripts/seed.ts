@@ -1,5 +1,7 @@
 import { Notify, PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { recordPriceHistory } from './record-price-history';
+
 const prisma = new PrismaClient();
 
 function sig(x: any) { return crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex'); }
@@ -20,6 +22,51 @@ async function main() {
   }
 
   console.log('Seeded listings:', cars.length);
+
+  const initialSnapshot = await recordPriceHistory(prisma);
+  if (initialSnapshot.inserted > 0) {
+    console.log(`Recorded initial price snapshots: ${initialSnapshot.inserted}`);
+  }
+
+  const adjustments = [
+    { sourceId: '1', delta: -400 },
+    { sourceId: '2', delta: 250 },
+    { sourceId: '3', delta: -600 }
+  ];
+
+  for (const adjustment of adjustments) {
+    const baseCar = cars.find((car) => car.sourceId === adjustment.sourceId);
+    if (!baseCar?.price) {
+      continue;
+    }
+
+    await prisma.listing.update({
+      where: { source_sourceId: { source: 'mock', sourceId: adjustment.sourceId } },
+      data: { price: baseCar.price + adjustment.delta }
+    });
+  }
+
+  const adjustmentSnapshot = await recordPriceHistory(prisma);
+  if (adjustmentSnapshot.inserted > 0) {
+    console.log(`Captured adjusted price snapshots: ${adjustmentSnapshot.inserted}`);
+  }
+
+  for (const adjustment of adjustments) {
+    const baseCar = cars.find((car) => car.sourceId === adjustment.sourceId);
+    if (!baseCar?.price) {
+      continue;
+    }
+
+    await prisma.listing.update({
+      where: { source_sourceId: { source: 'mock', sourceId: adjustment.sourceId } },
+      data: { price: baseCar.price }
+    });
+  }
+
+  const restoreSnapshot = await recordPriceHistory(prisma);
+  if (restoreSnapshot.inserted > 0) {
+    console.log(`Restored price snapshots: ${restoreSnapshot.inserted}`);
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     const demoFilters = { make: 'Toyota', model: 'Camry', minYear: 2015, maxPrice: 25000, maxMiles: 120000 };

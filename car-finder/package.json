@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "prisma:push": "prisma db push",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "record:price-history": "tsx scripts/record-price-history.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

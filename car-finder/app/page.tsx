@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SearchFiltersForm } from '@/components/SearchFiltersForm';
 import { SavedSearchList, type SavedSearchItem } from '@/components/SavedSearchList';
+import { PriceHistoryChart } from '@/components/PriceHistoryChart';
 import { useSearchFilters } from './hooks/useSearchFilters';
 
 type Listing = {
@@ -19,6 +20,11 @@ type Listing = {
   title?: string;
 };
 
+type PricePoint = {
+  price: number;
+  capturedAt: string;
+};
+
 export default function Home() {
   const { filters, updateFilter, setFilters, params } = useSearchFilters();
   const [data, setData] = useState<Listing[]>([]);
@@ -29,7 +35,12 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [authState, setAuthState] = useState<'unknown' | 'authenticated' | 'unauthenticated'>('unknown');
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
+  const [priceHistoryLoading, setPriceHistoryLoading] = useState(false);
+  const [priceHistoryError, setPriceHistoryError] = useState<string | null>(null);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedListingId = selectedListing?.id;
 
   useEffect(() => {
     setLoading(true);
@@ -147,6 +158,51 @@ export default function Home() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!selectedListingId) {
+      setPriceHistory([]);
+      setPriceHistoryError(null);
+      setPriceHistoryLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setPriceHistory([]);
+    setPriceHistoryError(null);
+    setPriceHistoryLoading(true);
+
+    fetch(`/api/listings/${selectedListingId}/price-history`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Unable to load price history');
+        }
+        return response.json();
+      })
+      .then((payload: { history: PricePoint[] }) => {
+        if (isCancelled) return;
+        setPriceHistory(payload.history);
+      })
+      .catch((error) => {
+        if (isCancelled) return;
+        setPriceHistoryError(error instanceof Error ? error.message : 'Unable to load price history');
+      })
+      .finally(() => {
+        if (isCancelled) return;
+        setPriceHistoryLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedListingId]);
+
+  const closeDrawer = useCallback(() => {
+    setSelectedListing(null);
+    setPriceHistory([]);
+    setPriceHistoryError(null);
+    setPriceHistoryLoading(false);
+  }, []);
+
   const canSave = authState !== 'unauthenticated';
 
   return (
@@ -186,13 +242,98 @@ export default function Home() {
               <p className="font-bold">
                 {typeof listing.price === 'number' ? `$${listing.price.toLocaleString()}` : ''}
               </p>
-              <a href={listing.url ?? '#'} target="_blank" rel="noreferrer" className="text-blue-600 underline">
-                View
-              </a>
+              <div className="flex items-center gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setSelectedListing(listing)}
+                  className="text-blue-600 underline"
+                >
+                  View details
+                </button>
+                {listing.url ? (
+                  <a href={listing.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                    Open listing
+                  </a>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
       </section>
+      {selectedListing ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
+            <button
+              type="button"
+              onClick={closeDrawer}
+              className="absolute right-4 top-4 text-sm text-blue-600 underline"
+            >
+              Close
+            </button>
+            <div className="grid gap-6 md:grid-cols-[minmax(0,220px)_1fr]">
+              <div className="space-y-3">
+                {selectedListing.images?.[0] ? (
+                  <img
+                    src={selectedListing.images[0]}
+                    alt={selectedListing.title ?? ''}
+                    className="w-full rounded"
+                  />
+                ) : null}
+                <div className="space-y-1 text-sm">
+                  <p className="font-semibold">
+                    {selectedListing.year} {selectedListing.make} {selectedListing.model}
+                  </p>
+                  <p className="text-gray-500">
+                    {selectedListing.city}
+                    {selectedListing.state ? `, ${selectedListing.state}` : ''}
+                  </p>
+                  {typeof selectedListing.price === 'number' ? (
+                    <p className="text-base font-semibold">
+                      Current price: ${selectedListing.price.toLocaleString()}
+                    </p>
+                  ) : null}
+                  {selectedListing.url ? (
+                    <a
+                      href={selectedListing.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      View original listing
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Price history</h3>
+                {priceHistoryLoading ? <p className="text-sm">Loading price history…</p> : null}
+                {priceHistoryError ? (
+                  <p className="text-sm text-red-600">{priceHistoryError}</p>
+                ) : null}
+                {!priceHistoryLoading && !priceHistoryError ? (
+                  priceHistory.length > 0 ? (
+                    <PriceHistoryChart points={priceHistory} />
+                  ) : (
+                    <p className="text-sm text-gray-500">No price history captured yet.</p>
+                  )
+                ) : null}
+                {priceHistory.length > 0 ? (
+                  <ul className="space-y-1 text-sm text-gray-500">
+                    {priceHistory
+                      .slice()
+                      .reverse()
+                      .map((point, index) => (
+                        <li key={`${point.capturedAt}-${index}`}>
+                          {new Date(point.capturedAt).toLocaleString()}: ${point.price.toLocaleString()}
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
