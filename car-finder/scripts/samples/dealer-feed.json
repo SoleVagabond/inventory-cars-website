@@ -1,0 +1,23 @@
+{
+  "listings": [
+    {
+      "sourceId": "INV-2001",
+      "vin": "3CZRM3H59EG123456",
+      "title": "2018 Honda CR-V EX",
+      "year": 2018,
+      "make": "Honda",
+      "model": "CR-V",
+      "trim": "EX",
+      "price": 21900,
+      "mileage": 52000,
+      "city": "Cleveland",
+      "state": "OH",
+      "phone": "555-987-6543",
+      "url": "https://dealer.example.com/listings/INV-2001",
+      "images": [
+        "https://picsum.photos/seed/crv-1/800/400",
+        "https://picsum.photos/seed/crv-2/800/400"
+      ]
+    }
+  ]
+}
