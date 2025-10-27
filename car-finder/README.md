@@ -21,8 +21,16 @@ Open http://localhost:3000
 See `.env.example`. Minimum:
 ```
 DATABASE_URL=postgresql://user:pass@host:5432/db
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=changeme
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+Generate OAuth credentials in the Google Cloud Console (Web client) and add the callback URL `http://localhost:3000/api/auth/callback/google`.
+
+The app uses NextAuth with the Prisma adapter; sessions are stored in Postgres. Sign-in/out controls are available in the global header once the environment variables above are set.
 
 ## Features in this starter
 - Mobile‑first SRP with instant filters (make, model, year/price/miles).
