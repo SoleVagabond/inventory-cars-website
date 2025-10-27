@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SearchFiltersForm } from '@/components/SearchFiltersForm';
 import { SavedSearchList, type SavedSearchItem } from '@/components/SavedSearchList';
 import { PriceHistoryChart } from '@/components/PriceHistoryChart';
@@ -18,6 +18,35 @@ type Listing = {
   images?: string[];
   url?: string;
   title?: string;
+  updatedAt?: string;
+};
+
+const SORT_LABELS = {
+  updatedAt_desc: 'Recently updated',
+  price_asc: 'Price: Low to High',
+  price_desc: 'Price: High to Low',
+  mileage_asc: 'Mileage: Low to High',
+  year_desc: 'Year: New to Old',
+} as const;
+
+type SortOption = keyof typeof SORT_LABELS;
+
+const PAGE_SIZE_OPTIONS = [20, 40, 60] as const;
+
+type SearchResponse = {
+  data: Listing[];
+  meta: {
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    sort: SortOption;
+    hasNextPage: boolean;
+    nextCursor: {
+      page: number;
+      pageSize: number;
+      sort: SortOption;
+    } | null;
+  };
 };
 
 type PricePoint = {
@@ -28,7 +57,13 @@ type PricePoint = {
 export default function Home() {
   const { filters, updateFilter, setFilters, params } = useSearchFilters();
   const [data, setData] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchMeta, setSearchMeta] = useState<SearchResponse['meta'] | null>(null);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+  const [sort, setSort] = useState<SortOption>('updatedAt_desc');
   const [savedSearches, setSavedSearches] = useState<SavedSearchItem[]>([]);
   const [savedLoading, setSavedLoading] = useState(true);
   const [savedError, setSavedError] = useState<string | null>(null);
@@ -43,13 +78,69 @@ export default function Home() {
   const selectedListingId = selectedListing?.id;
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/search?${params}`)
-      .then((response) => response.json())
-      .then((payload: Listing[]) => setData(payload))
-      .catch(() => setData([]))
-      .finally(() => setLoading(false));
+    setPage(1);
   }, [params]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    async function load() {
+      setIsPageLoading(true);
+      setSearchError(null);
+
+      const query = new URLSearchParams(params);
+      query.set('page', String(page));
+      query.set('pageSize', String(pageSize));
+      query.set('sort', sort);
+
+      try {
+        const response = await fetch(`/api/search?${query.toString()}`, {
+          signal: controller.signal,
+        });
+
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok || !payload) {
+          throw new Error(payload?.error ?? 'Unable to load results');
+        }
+
+        const typedPayload = payload as SearchResponse;
+        if (cancelled) {
+          return;
+        }
+        setData(typedPayload.data);
+        setSearchMeta(typedPayload.meta);
+
+        if (typedPayload.meta.page !== page) {
+          setPage(typedPayload.meta.page);
+        }
+        if (typedPayload.meta.pageSize !== pageSize) {
+          setPageSize(typedPayload.meta.pageSize);
+        }
+        setHasFetched(true);
+      } catch (error) {
+        if (cancelled || (error instanceof Error && error.name === 'AbortError')) {
+          return;
+        }
+        setData([]);
+        setSearchMeta(null);
+        setSearchError(error instanceof Error ? error.message : 'Unable to load results');
+        setHasFetched(true);
+      } finally {
+        if (!cancelled) {
+          setIsPageLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [params, page, pageSize, sort]);
 
   const fetchSavedSearches = useCallback(async () => {
     setSavedLoading(true);
@@ -204,6 +295,29 @@ export default function Home() {
   }, []);
 
   const canSave = authState !== 'unauthenticated';
+
+  const totalPages = useMemo(() => {
+    if (!searchMeta || searchMeta.pageSize <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.ceil(searchMeta.totalCount / searchMeta.pageSize));
+  }, [searchMeta]);
+
+  const pageSizeChoices = useMemo(() => {
+    return Array.from(new Set([...PAGE_SIZE_OPTIONS, pageSize])).sort((a, b) => a - b);
+  }, [pageSize]);
+
+  const resultsSummary = useMemo(() => {
+    if (!searchMeta || searchMeta.totalCount === 0) {
+      return 'No vehicles found';
+    }
+    const start = (searchMeta.page - 1) * searchMeta.pageSize + 1;
+    const end = Math.min(searchMeta.page * searchMeta.pageSize, searchMeta.totalCount);
+    return `Showing ${start.toLocaleString()} – ${end.toLocaleString()} of ${searchMeta.totalCount.toLocaleString()} vehicles`;
+  }, [searchMeta]);
+
+  const showInitialLoading = !hasFetched && isPageLoading;
+  const showResultsLoading = hasFetched && isPageLoading;
 
   return (
     <main className="grid gap-6 md:grid-cols-[minmax(0,240px)_1fr]">
