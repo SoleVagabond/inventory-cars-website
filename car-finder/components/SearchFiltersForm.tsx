@@ -2,15 +2,33 @@
 
 import { type SearchFilters } from '@/lib/search-schemas';
 
+type NotifyCadence = 'daily' | 'weekly' | 'off';
+
 interface SearchFiltersFormProps {
   filters: SearchFilters;
   onChange: <K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) => void;
   onSave?: () => void;
   isSaving?: boolean;
   canSave?: boolean;
+  notifyValue?: NotifyCadence;
+  onNotifyChange?: (value: NotifyCadence) => void;
 }
 
-export function SearchFiltersForm({ filters, onChange, onSave, isSaving, canSave = true }: SearchFiltersFormProps) {
+const notifyDescriptions: Record<NotifyCadence, string> = {
+  daily: 'every day',
+  weekly: 'once a week',
+  off: 'never',
+};
+
+export function SearchFiltersForm({
+  filters,
+  onChange,
+  onSave,
+  isSaving,
+  canSave = true,
+  notifyValue = 'off',
+  onNotifyChange,
+}: SearchFiltersFormProps) {
   const toNumber = (value: string, fallback: number) => {
     const next = Number(value);
     return Number.isFinite(next) ? next : fallback;
@@ -67,6 +85,31 @@ export function SearchFiltersForm({ filters, onChange, onSave, isSaving, canSave
           </button>
         ) : null}
       </div>
+      {onNotifyChange ? (
+        <div className="col-span-2 md:col-span-5 border rounded p-3 space-y-2">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <label htmlFor="notify-cadence" className="text-sm font-medium">
+              Email alerts
+            </label>
+            <select
+              id="notify-cadence"
+              className="border rounded px-3 py-2 text-sm"
+              value={notifyValue}
+              onChange={(event) => onNotifyChange(event.target.value as NotifyCadence)}
+              disabled={!canSave}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <p className="text-xs text-slate-500">
+            {notifyValue === 'off'
+              ? 'Alerts are off. Choose daily or weekly to receive saved-search emails.'
+              : `Alerts active: We’ll email you ${notifyDescriptions[notifyValue]}.`}
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

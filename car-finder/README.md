@@ -16,6 +16,11 @@ npm run dev
 
 Open http://localhost:3000
 
+## Scheduled saved-search alerts
+
+- Run alerts locally with `npx tsx scripts/send-saved-search-alerts.ts` once your `.env` is configured with Resend keys.
+- Deployments can hit `GET /api/cron/saved-searches` (optionally guarded by `CRON_SECRET`) from a scheduler like Vercel Cron or GitHub Actions.
+
 ## .env
 
 See `.env.example`. Minimum:

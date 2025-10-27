@@ -1,25 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { findListingsByFilters } from '@/lib/listing-search';
+import { defaultSearchFilters } from '@/lib/search-schemas';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const make = searchParams.get('make') || undefined;
-  const model = searchParams.get('model') || undefined;
-  const minYear = Number(searchParams.get('minYear') || 0);
-  const maxPrice = Number(searchParams.get('maxPrice') || 99999999);
-  const maxMiles = Number(searchParams.get('maxMiles') || 99999999);
 
-  const listings = await prisma.listing.findMany({
-    where: {
-      ...(make ? { make: { contains: make, mode: 'insensitive' } } : {}),
-      ...(model ? { model: { contains: model, mode: 'insensitive' } } : {}),
-      ...(minYear ? { year: { gte: minYear } } : {}),
-      ...(maxPrice ? { price: { lte: maxPrice } } : {}),
-      ...(maxMiles ? { mileage: { lte: maxMiles } } : {}),
-    },
-    orderBy: [{ updatedAt: 'desc' }],
-    take: 60,
-    select: { id: true, year: true, make: true, model: true, price: true, mileage: true, city: true, state: true, images: true, url: true, title: true }
+  const toNumber = (value: string | null, fallback: number) => {
+    if (!value) return fallback;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const listings = await findListingsByFilters({
+    make: searchParams.get('make') ?? defaultSearchFilters.make,
+    model: searchParams.get('model') ?? defaultSearchFilters.model,
+    minYear: toNumber(searchParams.get('minYear'), defaultSearchFilters.minYear),
+    maxPrice: toNumber(searchParams.get('maxPrice'), defaultSearchFilters.maxPrice),
+    maxMiles: toNumber(searchParams.get('maxMiles'), defaultSearchFilters.maxMiles),
   });
 
   return NextResponse.json(listings);
