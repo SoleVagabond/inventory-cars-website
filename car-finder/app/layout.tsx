@@ -1,10 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { getAuthenticatedUser } from '@/lib/auth';
-import { isStaff } from '@/lib/authorization';
-
-export const dynamic = 'force-dynamic';
+import { getServerSession } from '@/lib/auth';
 
 export const metadata: Metadata = {
   title: 'Car Finder',
@@ -12,8 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const user = await getAuthenticatedUser();
-  const staff = isStaff(user);
+  const session = await getServerSession();
+  const callbackUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '/';
 
   return (
     <html lang="en">
@@ -21,18 +17,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="mx-auto max-w-6xl p-4">
           <header className="flex items-center justify-between py-3">
             <h1 className="text-xl font-bold">Car Finder</h1>
-            <nav className="flex items-center gap-4 text-sm opacity-80">
-              {staff ? (
-                <Link href="/dealers" className="hover:underline">
-                  Dealer admin
-                </Link>
-              ) : null}
-              {user ? (
-                <span className="font-medium">{user.email}</span>
+            <nav className="flex items-center gap-3 text-sm text-slate-600">
+              {session?.user ? (
+                <>
+                  <span className="hidden sm:inline">{session.user.name ?? session.user.email}</span>
+                  <span className="sm:hidden">Account</span>
+                  <form action="/api/auth/signout" method="post">
+                    <input name="callbackUrl" type="hidden" value={callbackUrl} />
+                    <button className="rounded border border-slate-300 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-700 hover:bg-slate-100">
+                      Sign out
+                    </button>
+                  </form>
+                </>
               ) : (
-                <Link href="/api/auth/signin" className="hover:underline">
+                <a
+                  className="rounded border border-slate-300 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-700 hover:bg-slate-100"
+                  href="/api/auth/signin"
+                >
                   Sign in
-                </Link>
+                </a>
               )}
             </nav>
           </header>

@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Dealer {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
   phone     String?
   email     String?
@@ -16,13 +16,13 @@ model Dealer {
   address   String?
   lat       Float?
   lon       Float?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   listings  Listing[]
   members   DealerMembership[]
 }
 
 model Listing {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   vin           String?
   source        String
   sourceId      String?
@@ -41,7 +41,7 @@ model Listing {
   colorInt      String?
   sellerType    SellerType?
   dealerId      String?
-  dealer        Dealer?  @relation(fields: [dealerId], references: [id])
+  dealer        Dealer?        @relation(fields: [dealerId], references: [id])
   city          String?
   state         String?
   lat           Float?
@@ -50,7 +50,7 @@ model Listing {
   phone         String?
   images        String[]
   postedAt      DateTime?
-  updatedAt     DateTime @default(now())
+  updatedAt     DateTime       @default(now())
   hashSignature String
   priceHistory  PriceHistory[]
 
@@ -81,13 +81,13 @@ model User {
 }
 
 model SavedSearch {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id])
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
   userId         String
   queryJson      Json
   zip            String?
-  radiusMiles    Int      @default(50)
-  notify         Notify   @default(daily)
+  radiusMiles    Int       @default(50)
+  notify         Notify    @default(daily)
   lastNotifiedAt DateTime?
 }
 

@@ -25,35 +25,22 @@ function determineRole(email: string): UserRole {
 type UserWithMemberships = Prisma.UserGetPayload<{ include: { memberships: true } }>;
 
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
-    CredentialsProvider({
-      name: 'Demo',
-      credentials: {
-        email: { label: 'Email', type: 'text', placeholder: demoUser.email },
-      },
-      async authorize(credentials) {
-        const email = credentials?.email?.trim();
-        if (!email) {
-          return null;
-        }
-        return {
-          id: email,
-          email,
-          name: email,
-        };
-      },
+    EmailProvider({
+      server: requiredEnv('EMAIL_SERVER'),
+      from: requiredEnv('EMAIL_FROM'),
+      maxAge: 24 * 60 * 60,
+    }),
+    GoogleProvider({
+      clientId: requiredEnv('GOOGLE_CLIENT_ID'),
+      clientSecret: requiredEnv('GOOGLE_CLIENT_SECRET'),
     }),
   ],
-  session: { strategy: 'jwt' },
-  secret: process.env.NEXTAUTH_SECRET ?? 'development-secret',
+  secret: requiredEnv('NEXTAUTH_SECRET'),
+  session: { strategy: 'database' },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user && typeof (user as { id?: string }).id === 'string') {
-        token.sub = (user as { id: string }).id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
+    async session({ session, user }) {
       if (session.user) {
         session.user.id = token.sub ?? session.user.id ?? undefined;
         if (session.user.id) {
@@ -96,7 +83,7 @@ export async function getAuthenticatedUser(): Promise<UserWithMemberships | null
   const session = await getSessionOrDemo();
   const email = session?.user?.email;
 
-  if (!session || !email) {
+  if (!email) {
     return null;
   }
 
